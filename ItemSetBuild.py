@@ -25,7 +25,7 @@ desc_errors = desc_error_1.split(",")
 # main program ################################################################
 def main(*args):
     # set_id
-	set_name = gui.get_set_id()
+	set_name = gui.get_set_id()	
 	new_set_added = 'N'
 	if set_name == "":
 		gui.msgbox(set_name, "Missing Set Name")
@@ -89,7 +89,7 @@ f"""<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 	errors_exist = check_errors(r)
 	if errors_exist[0] == True: 
 		file_name = (f"unlinked_{set_name}")
-		f = open(f"{set_name}\{file_name}.txt","a+")
+		f = open(f"{set_name}\\{file_name}.txt","a+")
 		f.write(f"{barcode}\n")
 		f.close()
 		error = errors_exist[1]
@@ -105,9 +105,15 @@ f"""<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 	holding_id = item_dict['item']['holding_data']['holding_id']
 	item_pid   = item_dict['item']['item_data']['pid']
 	process_status = item_dict['item']['item_data']['process_type']
+	retain_test = item_dict['item']['item_data']['committed_to_retain']
 
-	if process_status is None:
-		#file_name = set_name.replace("\","")
+	if retain_test == None:
+	    retain_status = "false"
+	else:
+	    retain_status = item_dict['item']['item_data']['committed_to_retain']['#text']
+
+	if process_status is None and retain_status == "false":
+		#file_name = set_name.replace("\\","")
 		# add to set
 		set_xml = generateSetXML(set_id, mms_id, holding_id, item_pid, barcode)
 		r = postXML(f"https://api-na.hosted.exlibrisgroup.com/almaws/v1/conf/sets/{set_id}?id_type=BARCODE&op=add_members&apikey={apikey}", set_xml)
@@ -117,10 +123,20 @@ f"""<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 			error = errors_exist[1]
 			gui.msgbox(title, error)
 			return
-		f = open(f"{set_name}\{set_name}.txt","a+")
+		f = open(f"{set_name}\\{set_name}.txt","a+")
 		f.write(f"{barcode}\n")
 		f.close()
 		finish_message = "Added to Set"
+	elif retain_status == "true":	
+		file_name = (f"commited_to_retain_{set_name}")
+		file_name = file_name.replace("\\","")
+		f = open(f"{set_name}\\{file_name}.txt","a+")
+		f.write(f"{barcode} : {title}\n")
+		f.close()
+		issue_alert = (f"Commited to Retain")
+		finish_message = (f"Commited to Retain")
+		gui.msgbox(title, issue_alert)
+		return
 	else:
 		countup = len(desc_errors)
 		ticks = 0
@@ -128,7 +144,8 @@ f"""<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 			compare_this = (f": '{desc_errors[ticks]}',")
 			if str(compare_this) in str(process_status):
 				file_name = (f"{desc_errors[ticks]}_{set_name}")
-				f = open(f"{set_name}\{file_name}.txt","a+")
+				file_name = file_name.replace("\\","")
+				f = open(f"{set_name}\\{file_name}.txt","a+")
 				f.write(f"{barcode} : {title}\n")
 				f.close()
 				issue_alert = (f"Item is {str(desc_errors[ticks])}")
@@ -138,7 +155,7 @@ f"""<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 				return
 			else:
 				ticks += 1
-
+                
 	gui.update_status_success(title[:60], finish_message)
             
 # functions ###################################################################
@@ -177,7 +194,7 @@ def check_errors(r):
 class gui():	
 	def __init__(self, master):
 		self.master = master
-		master.title("Physical Item Set Builder 4")
+		master.title("Physical Item Set Builder 5")
 		master.resizable(0, 0)
 		master.minsize(width=600, height=100)
 		master.iconbitmap("logo_small.ico")
@@ -258,8 +275,8 @@ class gui():
 		self.status_title.config(text=title, fg=color)
         
 	def update_status_failure(self, title, msg):
-		self.status_added.config(text="")
-		self.status_title.config(text=msg, fg="red")
+		self.status_added.config(text=msg, fg="red")
+		self.status_title.config(text=title[:60], fg="red")
 	
 	def update_set_failure(self):
 		self.status_added.config(text="")
